@@ -18,14 +18,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,7 +45,7 @@ public class ApunteController {
         return apunteService.getApuntes(pageable);
     }
 
-
+/*
     @PostMapping(value="get-busqueda", produces = "application/json; charset=utf-8")
     public Page<Apunte> busqueda(
             @RequestBody ApuntesTodos apuntesTodos
@@ -76,6 +74,14 @@ public class ApunteController {
                 break;
         }
         return apuntes;
+    }
+    */
+
+    @PostMapping(value="get-busqueda", produces = "application/json; charset=utf-8")
+    public Page<Apunte> busqueda(
+            @RequestBody ApuntesTodos apuntesTodos
+    ) throws Exception {
+      return apunteService.busqueda(apuntesTodos);
     }
 
     @GetMapping(value = "get-apunte-by-id/{id}")
@@ -115,13 +121,12 @@ public class ApunteController {
 
     @PostMapping(value="delete-archivo", produces = "application/json; charset=utf-8")
     public boolean deleteArchivo(@RequestBody Archivo_Usuario archivo_usuario) throws Exception {
-        log.info(archivo_usuario.toString());
         boolean response = apunteService.deleteArchivo(archivo_usuario);
         return response;
     }
 
     @RequestMapping(path = "/download-file", method = RequestMethod.POST)
-    public ResponseEntity<Resource> download(@RequestBody String body) throws IOException, HandleException, DemoException {
+    public ResponseEntity<Resource> download(@RequestBody String body) throws IOException, HandleException {
         ObjectMapper objectMapper = new ObjectMapper();
         JsonNode jsonNode = objectMapper.readTree(body);
         String filename = jsonNode.get("filename").asText();
@@ -143,7 +148,6 @@ public class ApunteController {
                 .headers(headers)
                 .contentLength(file.contentLength())
                 .body(file);
-
     }
 
 }

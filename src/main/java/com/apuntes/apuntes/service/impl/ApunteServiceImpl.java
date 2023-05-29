@@ -1,6 +1,7 @@
 package com.apuntes.apuntes.service.impl;
 
 import com.apuntes.apuntes.model.Apunte;
+import com.apuntes.apuntes.model.ApuntesTodos;
 import com.apuntes.apuntes.model.Archivo_Usuario;
 import com.apuntes.apuntes.repository.ApunteRepository;
 import com.apuntes.apuntes.repository.ArchivoUsuarioRepository;
@@ -9,7 +10,9 @@ import com.apuntes.apuntes.service.FileServiceAPI;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -48,33 +51,42 @@ public class ApunteServiceImpl implements ApunteService {
     }
 
     @Override
-    public Page<Apunte> getApuntesByCategory(String category, Pageable pageable) {
-        return apunteRepository.findByCategory(category, pageable);
-    }
-    @Override
-    public Page<Apunte> getApuntesByTitulo(String titulo, Pageable pageable) {
-        return apunteRepository.findByTitulo(titulo, pageable);
-    }
-
-    @Override
-    public Page<Apunte> getApuntesByContenido(String contenido, Pageable pageable) {
-        return apunteRepository.findByContenido(contenido, pageable);
-    }
-    @Override
     public Optional<Apunte> getApunteById(Long id) {
        return  apunteRepository.findById(id);
     }
+    @Override
+    public Page<Apunte> busqueda(ApuntesTodos apuntesTodos){
+        String[] parts = apuntesTodos.getSortBy().split(",");
+        String sortBy = parts[0];
+        String sortDir = parts[1];
 
+        Sort sort = sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+
+        Pageable pageable = PageRequest.of(apuntesTodos.getPage(), apuntesTodos.getSize(), sort);
+        Page<Apunte> apuntes;
+        switch (apuntesTodos.getBuscarPor()){
+            case "categoria":
+                apuntes =  apunteRepository.findByCategory(apuntesTodos.getBuscar(), pageable);
+                break;
+            case "titulo":
+                apuntes = apunteRepository.findByTitulo(apuntesTodos.getBuscar(), pageable);
+                break;
+            case "contenido":
+                apuntes = apunteRepository.findByContenido(apuntesTodos.getBuscar(), pageable);
+                break;
+            default:
+                apuntes = apunteRepository.findAll(pageable);
+                break;
+        }
+        return apuntes;
+    }
 
     @Override
     public Apunte saveApunte(List<MultipartFile> images, List<MultipartFile> files, String apunte) throws Exception {
         Apunte om_apunte = new ObjectMapper().readValue(apunte, Apunte.class);
         om_apunte.setActivo(true);
         Apunte ap = apunteRepository.save(om_apunte);
-        log.info(ap.toString());
-
-        if(images.toArray().length == 0){ log.info("La lista de imagenes viene vacía"); }
-        if(files.toArray().length == 0){ log.info("La lista de archivos viene vacía"); }
 
         List <Archivo_Usuario> arraylistImages = new ArrayList<>();
         arraylistImages = this.saveFiles("images", images, om_apunte.getId_usuario(), ap.getIdApunte(), 1);
@@ -98,13 +110,8 @@ public class ApunteServiceImpl implements ApunteService {
         Apunte ap = apunteRepository.save(om_apunte);
             
         Long idApunte = ap.getIdApunte();
-        log.info("idApunte = " +  String.valueOf(idApunte));
 
         List<Archivo_Usuario> findByIdApunte = archivoUsuarioRepository.findByIdApunte(idApunte);
-        log.info("findByIdApunte = " + findByIdApunte.toString());
-
-        if(images.toArray().length == 0){ log.info("La lista de imagenes viene vacía"); }
-        if(files.toArray().length == 0){ log.info("La lista de archivos viene vacía"); }
 
         List <Archivo_Usuario> arraylistImages = new ArrayList<>();
         arraylistImages = this.saveFiles("images", images, om_apunte.getId_usuario(), ap.getIdApunte(), 1);
@@ -122,7 +129,6 @@ public class ApunteServiceImpl implements ApunteService {
                 findByIdApunte.stream()
         ).collect(Collectors.toList());
 
-        log.info("resultConcat = " + result.toString());
         ap.setArchivo_usuario(result);
         return ap;
     }
@@ -145,43 +151,6 @@ public class ApunteServiceImpl implements ApunteService {
         }
         return nombredelarraylist;
     }
-
-
-    /*
-    @Override
-    public Apunte updateApunte(List<MultipartFile> files, String apunte) throws Exception {
-        Apunte om_apunte = new ObjectMapper().readValue(apunte, Apunte.class);
-        om_apunte.setActivo(true);
-        Apunte ap = apunteRepository.save(om_apunte);
-
-        Long idApunte = ap.getIdApunte();
-        log.info("idApunte = " +  String.valueOf(idApunte));
-
-        List<Archivo_Usuario> findByIdApunte = archivoUsuarioRepository.findByIdApunte(idApunte);
-        log.info("findByIdApunte = " + findByIdApunte.toString());
-
-        if(files.toArray().length == 0){
-            log.info("La lista de imagenes viene vacía");
-        }
-
-        List <Archivo_Usuario> nombredelarraylist = new ArrayList<>();
-        for (MultipartFile file : files) {
-            String file_name = fileServiceAPI.save(file);
-            Archivo_Usuario archivo_usuario = new Archivo_Usuario();
-            archivo_usuario.setId_usuario(om_apunte.getId_usuario());
-            archivo_usuario.setNombre_archivo(file_name);
-            archivo_usuario.setIdApunte(ap.getIdApunte());
-            Archivo_Usuario au = archivoUsuarioRepository.save(archivo_usuario);
-            nombredelarraylist.add(au);
-        }
-        List<Archivo_Usuario> resultConcat = Stream.concat(
-                nombredelarraylist.stream(),
-                findByIdApunte.stream()
-        ).collect(Collectors.toList());
-        log.info("resultConcat = " + resultConcat.toString());
-        ap.setArchivo_usuario(resultConcat);
-        return ap;
-    }*/
 
     @Override
     public boolean deleteApunte(Long id) {

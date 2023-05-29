@@ -27,20 +27,6 @@ public class CategoriaController {
     @Autowired
     private CategoriaService categoriaService;
 
-    /*
-    @GetMapping(value = "get-categoriasx", produces = "application/json; charset=utf-8")
-    public ResponseEntity<List<Categoria>> getCategoriasx() {
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Type", "application/json");
-        headers.add("Access-Control-Allow-Origin ", "*");
-
-        headers.add("Access-Control-Allow-Headers", "*");
-        headers.add("Access-Control-Allow-Methods", "HEAD,GET,PUT,POST,DELETE,PATCH");
-        headers.add("Access-Control-Max-Age", "86400");
-
-        return new ResponseEntity <List<Categoria>>(categoriaService.getCategorias(),headers, HttpStatus.OK);
-    }*/
-
     @GetMapping(value = "get-categorias-list", produces = "application/json; charset=utf-8")
     public List<Categoria> getCategorias() {
         return categoriaService.getCategorias();
@@ -57,7 +43,6 @@ public class CategoriaController {
         return  categoriaService.findById(id);
     }
 
-    //@ApiOperation(value = "Guarda la categoría")
     @PostMapping(value = "guardar-categoria", produces = "application/json; charset=utf-8")
     public Categoria saveCategoria(@RequestBody Categoria categoria) {
         log.info(categoria.toString());
