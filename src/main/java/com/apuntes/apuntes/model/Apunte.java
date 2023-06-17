@@ -3,6 +3,9 @@ package com.apuntes.apuntes.model;
 import org.hibernate.annotations.GenericGenerator;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -15,8 +18,11 @@ public class Apunte {
     @GenericGenerator(name = "native", strategy = "native")
     @Column(name = "id_apunte")
     private Long idApunte;
+    @NotNull(message = "El id_categoria is requerido")
     private Long id_categoria;
+    @NotEmpty(message = "El titulo is requerido")
     private String titulo;
+    @NotEmpty(message = "El contenido is requerido")
     private String contenido;
     private boolean activo;
     private Long id_usuario;

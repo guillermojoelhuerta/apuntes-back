@@ -18,7 +18,7 @@ public interface ApunteService {
     Optional<Apunte> getApunteById(Long id);
     Apunte saveApunte(List<MultipartFile> images, List<MultipartFile> files, String apunte) throws Exception;
     Apunte updateApunte(List<MultipartFile> images, List<MultipartFile> files, String apunte) throws Exception;
-    boolean deleteApunte(Long id);
+    boolean deleteApunte(Long id) throws Exception;
     boolean deleteArchivo(Archivo_Usuario archivo_usuario) throws Exception;
     Page<Apunte> busqueda(ApuntesTodos apuntesTodos);
 }

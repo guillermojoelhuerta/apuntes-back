@@ -1,5 +1,7 @@
 package com.apuntes.apuntes.service.impl;
 
+import com.apuntes.apuntes.exception.BindingResultException;
+import com.apuntes.apuntes.exception.ResourceNotFoundException;
 import com.apuntes.apuntes.model.Apunte;
 import com.apuntes.apuntes.model.ApuntesTodos;
 import com.apuntes.apuntes.model.Archivo_Usuario;
@@ -14,6 +16,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.DataBinder;
+import org.springframework.validation.Validator;
 import org.springframework.web.multipart.MultipartFile;
 
 import org.slf4j.Logger;
@@ -40,6 +45,12 @@ public class ApunteServiceImpl implements ApunteService {
     @Autowired
     private ArchivoUsuarioRepository archivoUsuarioRepository;
 
+    private Validator validator;
+
+    public ApunteServiceImpl(Validator validator) {
+        this.validator = validator;
+    }
+
     @Override
     public List<Apunte> getApuntes() {
         return (List<Apunte>) apunteRepository.findAll();
@@ -65,20 +76,30 @@ public class ApunteServiceImpl implements ApunteService {
 
         Pageable pageable = PageRequest.of(apuntesTodos.getPage(), apuntesTodos.getSize(), sort);
         Page<Apunte> apuntes;
+        String msg = "";
         switch (apuntesTodos.getBuscarPor()){
             case "categoria":
                 apuntes =  apunteRepository.findByCategory(apuntesTodos.getBuscar(), pageable);
+                msg = "No existen productos con esa categoría.";
                 break;
             case "titulo":
                 apuntes = apunteRepository.findByTitulo(apuntesTodos.getBuscar(), pageable);
+                msg = "No existen productos con ese título.";
                 break;
             case "contenido":
                 apuntes = apunteRepository.findByContenido(apuntesTodos.getBuscar(), pageable);
+                msg = "No existen productos con ese contenido.";
                 break;
             default:
                 apuntes = apunteRepository.findAll(pageable);
+                msg = "No existen productos.";
                 break;
         }
+
+        if (apuntes.isEmpty()) {
+            throw new ResourceNotFoundException(msg);
+        }
+
         return apuntes;
     }
 
@@ -86,6 +107,12 @@ public class ApunteServiceImpl implements ApunteService {
     public Apunte saveApunte(List<MultipartFile> images, List<MultipartFile> files, String apunte) throws Exception {
         Apunte om_apunte = new ObjectMapper().readValue(apunte, Apunte.class);
         om_apunte.setActivo(true);
+        BindingResult bindingResult = new DataBinder(om_apunte).getBindingResult();
+        validator.validate(om_apunte, bindingResult);
+        if (bindingResult.hasErrors()) {
+            throw new BindingResultException(bindingResult);
+        }
+
         Apunte ap = apunteRepository.save(om_apunte);
 
         List <Archivo_Usuario> arraylistImages = new ArrayList<>();
@@ -107,6 +134,11 @@ public class ApunteServiceImpl implements ApunteService {
     public Apunte updateApunte(List<MultipartFile> images, List<MultipartFile> files, String apunte) throws Exception {
         Apunte om_apunte = new ObjectMapper().readValue(apunte, Apunte.class);
         om_apunte.setActivo(true);
+        BindingResult bindingResult = new DataBinder(om_apunte).getBindingResult();
+        validator.validate(om_apunte, bindingResult);
+        if (bindingResult.hasErrors()) {
+            throw new BindingResultException(bindingResult);
+        }
         Apunte ap = apunteRepository.save(om_apunte);
             
         Long idApunte = ap.getIdApunte();
@@ -139,31 +171,30 @@ public class ApunteServiceImpl implements ApunteService {
                                      int typeFile) throws Exception
     {
         List <Archivo_Usuario> nombredelarraylist = new ArrayList<>();
-        for (MultipartFile file : files) {
-            String file_name = fileServiceAPI.save(carpeta, file);
-            Archivo_Usuario archivo_usuario = new Archivo_Usuario();
-            archivo_usuario.setId_usuario(idUsuario);
-            archivo_usuario.setNombre_archivo(file_name);
-            archivo_usuario.setIdApunte(idApunte);
-            archivo_usuario.setIdTypeFile(typeFile);
-            Archivo_Usuario au = archivoUsuarioRepository.save(archivo_usuario);
-            nombredelarraylist.add(au);
-        }
+            for (MultipartFile file : files) {
+                String file_name = fileServiceAPI.save(carpeta, file);
+                Archivo_Usuario archivo_usuario = new Archivo_Usuario();
+                archivo_usuario.setId_usuario(idUsuario);
+                archivo_usuario.setNombre_archivo(file_name);
+                archivo_usuario.setIdApunte(idApunte);
+                archivo_usuario.setIdTypeFile(typeFile);
+                Archivo_Usuario au = archivoUsuarioRepository.save(archivo_usuario);
+                nombredelarraylist.add(au);
+            }
         return nombredelarraylist;
     }
 
     @Override
-    public boolean deleteApunte(Long id) {
+    public boolean deleteApunte(Long id){
         try{
             List<Archivo_Usuario> findByIdApunte = archivoUsuarioRepository.findByIdApunte(id);
             for ( Archivo_Usuario archivo : findByIdApunte ) {
-                log.info("archivo a eliminar = " + archivo.getNombre_archivo());
                 this.deleteArchivo(archivo);
             }
             apunteRepository.deleteById(id);
             return true;
         }catch(Exception e){
-            return false;
+            throw new RuntimeException("Error : "+ e.getMessage());
         }
     }
 
@@ -171,7 +202,6 @@ public class ApunteServiceImpl implements ApunteService {
     public boolean deleteArchivo(Archivo_Usuario archivo_usuario) throws Exception {
         String typeFile = this.getTypeFile(archivo_usuario.getIdTypeFile());
         if(fileServiceAPI.deleteArchivo(typeFile+"/"+archivo_usuario.getNombre_archivo())){
-            log.info("Se eliminó el archivo");
             archivoUsuarioRepository.deleteById(archivo_usuario.getId_archivo_usuario());
             return true;
         }
